@@ -1,0 +1,7 @@
+{
+  "attribute.name.moreplayerattribute.air_resistance": "Air Resistance",
+  "attribute.name.moreplayerattribute.block_resistance": "Ground Resistance",
+  "attribute.name.moreplayerattribute.water_resistance": "Water Resistance",
+  "attribute.name.moreplayerattribute.lava_resistance": "Lava Resistance",
+  "attribute.name.moreplayerattribute.move_acceleration": "Move Acceleration"
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "moreplayerattribute",
+  "version": "${version}",
+  "name": "MorePlayerAttribute",
+  "description": "Adds player attributes for air, ground, water and lava resistance, plus ground acceleration.",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "com.perry.moreplayerattribute.client.MoreplayerattributeClient"
+    ],
+    "main": [
+      "com.perry.moreplayerattribute.Moreplayerattribute"
+    ]
+  },
+  "mixins": [
+    "moreplayerattribute.mixins.json",
+    {
+      "config": "moreplayerattribute.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}

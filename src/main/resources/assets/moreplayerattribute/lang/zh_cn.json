@@ -1,0 +1,7 @@
+{
+  "attribute.name.moreplayerattribute.air_resistance": "空气阻力",
+  "attribute.name.moreplayerattribute.block_resistance": "地面摩擦",
+  "attribute.name.moreplayerattribute.water_resistance": "水中阻力",
+  "attribute.name.moreplayerattribute.lava_resistance": "岩浆阻力",
+  "attribute.name.moreplayerattribute.move_acceleration": "移动加速度"
+}
