@@ -32,6 +32,9 @@ public abstract class LivingEntityMixin extends Entity {
     @Shadow
     public abstract double getAttributeValue(Holder<Attribute> holder);
 
+    @Shadow
+    public abstract boolean shouldDiscardFriction();
+
     public LivingEntityMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
     }
@@ -44,19 +47,6 @@ public abstract class LivingEntityMixin extends Entity {
     @Unique
     private double fromAttribute(double old, AttributeInstance instance) {
         return Mth.clamp(1.0 - (1.0 - old) * instance.getValue(), 0.0, 1.0);
-    }
-
-    @ModifyConstant(method = "travelInAir", constant = @Constant(floatValue = 0.91F))
-    private float moreplayerattribute$horizontalDamping(float constant) {
-        if (isNotPlayer()) {
-            return constant;
-        }
-        AttributeInstance instance = getAttribute(ModAttributes.AIR_RESISTANCE);
-        if (instance == null) {
-            Moreplayerattribute.LOGGER.severe("Missing air resistance attribute on " + getPlainTextName());
-            return constant;
-        }
-        return (float) fromAttribute(constant, instance);
     }
 
     @WrapOperation(method = "travelInAir", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getFriction()F"))
@@ -73,9 +63,35 @@ public abstract class LivingEntityMixin extends Entity {
         return (float) fromAttribute(old, attributeInstance);
     }
 
+    /**
+     * 原版 travelInAir 中水平阻尼是 {@code vec3.x/z * (方块摩擦 * 0.91F)}，其中 0.91F 属于共享常量。
+     *
+     * <p>这里不能用 {@code @ModifyConstant} 去改那个 0.91F：Constant 修改属于 Redirect 型注入，
+     * 同一个指令只允许一个注入器认领，优先级最高者胜出，输掉的一方会直接抛
+     * {@code InjectionError}。Carpet 的 {@code LivingEntity_creativeFlyMixin}（creativeFlyDrag）
+     * 也用 {@code @ModifyConstant(expect = 1)} 改这个常量，所以两边必然有一方启动崩溃。
+     *
+     * <p>改成 WrapOperation（MixinExtras，可叠加）包裹 handleRelativeFrictionAndCalculateMovement：
+     * 该调用的返回值随后就要乘上 0.91F，所以把返回值按 {@code fromAttribute(0.91F) / 0.91F} 缩放
+     * 与改那个常量完全等价（地面上还会再乘方块摩擦，也一并保留）。
+     */
     @WrapOperation(method = "travelInAir", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;handleRelativeFrictionAndCalculateMovement(Lnet/minecraft/world/phys/Vec3;F)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 morepayerattribute$fixAcceleration(LivingEntity instance, Vec3 dir, float friction, Operation<Vec3> original) {
-        return original.call(instance, dir, Mth.clamp(friction, 0.1f, 1f));
+        Vec3 movement = original.call(instance, dir, Mth.clamp(friction, 0.1f, 1f));
+        if (isNotPlayer() || shouldDiscardFriction()) {
+            // discardFriction 的分支根本不会乘阻尼系数，不需要（也不应该）缩放。
+            return movement;
+        }
+        AttributeInstance attributeInstance = getAttribute(ModAttributes.AIR_RESISTANCE);
+        if (attributeInstance == null) {
+            Moreplayerattribute.LOGGER.severe("Missing air resistance attribute on " + getPlainTextName());
+            return movement;
+        }
+        double scale = fromAttribute(0.91F, attributeInstance) / 0.91F;
+        if (scale == 1.0) {
+            return movement;
+        }
+        return new Vec3(movement.x * scale, movement.y, movement.z * scale);
     }
 
     @ModifyConstant(method = "travelInAir", constant = @Constant(floatValue = 0.98F))
